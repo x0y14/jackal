@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/apache/pulsar-client-go/pulsar"
 	connect_go "github.com/bufbuild/connect-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog/log"
 	v1 "github.com/x0y14/jackal/gen/notify/v1"
 	"github.com/x0y14/jackal/mem"
@@ -12,7 +12,7 @@ import (
 )
 
 type NotifyService struct {
-	Mq pulsar.Client
+	Rb *amqp.Connection
 }
 
 func (n *NotifyService) FetchMessage(
@@ -24,31 +24,48 @@ func (n *NotifyService) FetchMessage(
 		return connect_go.NewError(connect_go.CodeUnauthenticated, fmt.Errorf("pls set X-User-ID"))
 	}
 
-	consumer, err := n.Mq.Subscribe(pulsar.ConsumerOptions{
-		Topic:            userId,
-		SubscriptionName: userId,
-		Type:             pulsar.Shared,
-	})
+	ch, err := n.Rb.Channel()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create pulsar.consumer")
+		log.Error().Err(err).Msg("failed to create rb.channel")
 		return connect_go.NewError(connect_go.CodeInternal, err)
 	}
-	defer consumer.Close()
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		userId,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to declare rb.queue")
+		return connect_go.NewError(connect_go.CodeInternal, err)
+	}
+
+	queue, err := ch.Consume(
+		q.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to consume")
+		return connect_go.NewError(connect_go.CodeInternal, err)
+	}
 
 Loop:
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info().Str("userId", userId).Msg("disconnected")
 			break Loop
-		default:
-			msg, err := consumer.Receive(context.Background())
-			if err != nil {
-				log.Error().Err(err).Msg("failed to receive message via pulsar.consumer")
-				return connect_go.NewError(connect_go.CodeInternal, err)
-			}
-			consumer.Ack(msg)
-
-			msgIdStr := msg.Payload()
+		case msg := <-queue:
+			msgIdStr := string(msg.Body)
 			msgId, err := strconv.ParseInt(string(msgIdStr), 10, 64)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to parse msgId")

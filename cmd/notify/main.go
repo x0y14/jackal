@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/apache/pulsar-client-go/pulsar"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/x0y14/jackal/database"
 	"github.com/x0y14/jackal/gen/notify/v1/notifyv1connect"
 	"github.com/x0y14/jackal/mem"
@@ -22,16 +22,14 @@ func main() {
 	defer database.Close()
 	mem.Init(os.Getenv("REDIS_URL"))
 
-	client, err := pulsar.NewClient(pulsar.ClientOptions{
-		URL: os.Getenv("PULSAR_URL"),
-	})
+	conn, err := amqp.Dial(os.Getenv("RABBIT_URL"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to connect rabbitmq: %v", err)
 	}
-	defer client.Close()
+	defer conn.Close()
 
 	notifyServiceHandler := &service.NotifyService{
-		Mq: client,
+		Rb: conn,
 	}
 
 	mux := http.NewServeMux()

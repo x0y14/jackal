@@ -8,22 +8,12 @@ services:
     networks:
       - internal
 
-  pulsar:
-    image: apachepulsar/pulsar:2.10.0
-    user: root
+  rabbitmq:
+    image: rabbitmq:latest
     ports:
-      - "6650:6650"
-      - "8080:8080"
-    command: bin/pulsar standalone
+      - "5672:5672"
     volumes:
-      - type: volume
-        source: pulsardata
-        target: "/pulsar/data"
-        read_only: false
-      - type: volume
-        source: pulsarconf
-        target: "/pulsar/conf"
-        read_only: false
+      - rabbitmqdata:/var/lib/rabbitmq
     networks:
       - internal
 
@@ -69,3 +59,4 @@ networks:
 volumes:
   pulsardata:
   pulsarconf:
+  rabbitmqdata:

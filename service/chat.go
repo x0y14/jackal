@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/apache/pulsar-client-go/pulsar"
 	connect_go "github.com/bufbuild/connect-go"
 	_ "github.com/mattn/go-sqlite3"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog/log"
 	"github.com/x0y14/jackal"
 	"github.com/x0y14/jackal/database"
@@ -15,7 +15,7 @@ import (
 )
 
 type ChatService struct {
-	Mq pulsar.Client
+	Rb *amqp.Connection
 }
 
 func (c *ChatService) CreateUser(
@@ -79,24 +79,45 @@ func (c *ChatService) SendMessage(
 		return nil, connect_go.NewError(connect_go.CodeInternal, err)
 	}
 
-	// 受信したことをmqに教えてあげる
-	producer, err := c.Mq.CreateProducer(pulsar.ProducerOptions{
-		Topic: request.Msg.Message.To,
-	})
+	ch, err := c.Rb.Channel()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create pulsar.producer")
+		log.Error().Err(err).Msg("failed to create rb.channel")
+		return nil, connect_go.NewError(connect_go.CodeInternal, err)
 	}
-	defer producer.Close()
-	_, err = producer.Send(context.Background(), &pulsar.ProducerMessage{
-		Payload: []byte(fmt.Sprintf("%v", messageId)),
-	})
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		request.Msg.Message.To,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("failed to declare rb.queue")
+		return nil, connect_go.NewError(connect_go.CodeInternal, err)
+	}
+
+	// 受信したことをmqに教えてあげる
+	err = ch.PublishWithContext(
+		context.Background(),
+		"",
+		q.Name,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(fmt.Sprintf("%v", messageId)),
+		})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to publish message")
+		return nil, connect_go.NewError(connect_go.CodeInternal, err)
 	}
 
 	// idを書き換え
 	request.Msg.Message.MessageId = messageId
-
+	//
 	return connect_go.NewResponse(
 		&v1.SendMessageResponse{
 			Message: request.Msg.Message,
