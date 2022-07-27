@@ -1,0 +1,15 @@
+syntax = "proto3";
+package notify.v1;
+
+import "types/v1/types.proto";
+
+message FetchMessageRequest {
+  int64 last_message_id = 1;
+}
+message FetchMessageResponse {
+  types.v1.Message message = 1;
+}
+
+service NotifyService {
+  rpc FetchMessage(FetchMessageRequest) returns (stream FetchMessageResponse) {};
+}

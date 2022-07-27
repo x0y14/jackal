@@ -1,0 +1,25 @@
+syntax = "proto3";
+package types.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message User {
+  string user_id = 1;
+  string display_name = 2;
+}
+
+enum MessageKind {
+  MESSAGE_KIND_PLAIN_UNSPECIFIED = 0;
+  MESSAGE_KIND_ENCRYPTED = 1;
+}
+
+message Message {
+  int64 message_id = 1;
+  string from = 2;
+  string to = 3;
+  string text = 4;
+  string metadata = 5;
+
+  MessageKind kind = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
