@@ -1,0 +1,71 @@
+services:
+  redis:
+    image: redis:latest
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - internal
+
+  pulsar:
+    image: apachepulsar/pulsar:2.10.0
+    user: root
+    ports:
+      - "6650:6650"
+      - "8080:8080"
+    command: bin/pulsar standalone
+    volumes:
+      - type: volume
+        source: pulsardata
+        target: "/pulsar/data"
+        read_only: false
+      - type: volume
+        source: pulsarconf
+        target: "/pulsar/conf"
+        read_only: false
+    networks:
+      - internal
+
+  chat:
+    build:
+      context: .
+      dockerfile: ./cmd/chat/Dockerfile
+    volumes:
+      - type: bind
+        source: ./data/sqlite/jackal.sqlite
+        target: ${SQLITE_PATH}
+        read_only: false
+    environment:
+      - SQLITE_PATH=${SQLITE_PATH}
+      - REDIS_URL=${REDIS_URL}
+      - PULSAR_URL=${PULSAR_URL}
+    ports:
+      - "8081:8080"
+    networks:
+      - internal
+
+  notify:
+    build:
+      context: .
+      dockerfile: ./cmd/notify/Dockerfile
+    volumes:
+      - type: bind
+        source: ./data/sqlite/jackal.sqlite
+        target: ${SQLITE_PATH}
+        read_only: false
+    environment:
+      - SQLITE_PATH=${SQLITE_PATH}
+      - REDIS_URL=${REDIS_URL}
+      - PULSAR_URL=${PULSAR_URL}
+    ports:
+      - "8082:8080"
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  pulsardata:
+  pulsarconf:
