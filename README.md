@@ -35,7 +35,7 @@ docker compose --env-file .env.local up
 ---
 
 ### todo
-- [ ] tui client
+- [x] tui client
 - [ ] e2ee
 - [x] replace pulsar to other mq(pulsar is too heavy for this project)
     pulsar -> rabbitmq
