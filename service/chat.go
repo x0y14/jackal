@@ -17,6 +17,21 @@ type ChatService struct {
 	Rb *amqp.Connection
 }
 
+func (c *ChatService) GetUser(
+	_ context.Context,
+	request *connect_go.Request[v1.GetUserRequest]) (
+	*connect_go.Response[v1.GetUserResponse], error) {
+	log.Info().Str("method", request.Spec().Procedure)
+
+	user, err := database.GetUser(request.Msg.UserId)
+	if err != nil {
+		log.Warn().Str("userId", request.Msg.UserId).Err(err)
+		return nil, connect_go.NewError(connect_go.CodeInvalidArgument, err)
+	}
+
+	return connect_go.NewResponse(&v1.GetUserResponse{User: user}), nil
+}
+
 func (c *ChatService) CreateUser(
 	_ context.Context,
 	request *connect_go.Request[v1.CreateUserRequest]) (

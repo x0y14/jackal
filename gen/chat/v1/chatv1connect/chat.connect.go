@@ -28,6 +28,7 @@ const (
 // ChatServiceClient is a client for the chat.v1.ChatService service.
 type ChatServiceClient interface {
 	CreateUser(context.Context, *connect_go.Request[v1.CreateUserRequest]) (*connect_go.Response[v1.CreateUserResponse], error)
+	GetUser(context.Context, *connect_go.Request[v1.GetUserRequest]) (*connect_go.Response[v1.GetUserResponse], error)
 	SendMessage(context.Context, *connect_go.Request[v1.SendMessageRequest]) (*connect_go.Response[v1.SendMessageResponse], error)
 }
 
@@ -46,6 +47,11 @@ func NewChatServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts
 			baseURL+"/chat.v1.ChatService/CreateUser",
 			opts...,
 		),
+		getUser: connect_go.NewClient[v1.GetUserRequest, v1.GetUserResponse](
+			httpClient,
+			baseURL+"/chat.v1.ChatService/GetUser",
+			opts...,
+		),
 		sendMessage: connect_go.NewClient[v1.SendMessageRequest, v1.SendMessageResponse](
 			httpClient,
 			baseURL+"/chat.v1.ChatService/SendMessage",
@@ -57,12 +63,18 @@ func NewChatServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts
 // chatServiceClient implements ChatServiceClient.
 type chatServiceClient struct {
 	createUser  *connect_go.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	getUser     *connect_go.Client[v1.GetUserRequest, v1.GetUserResponse]
 	sendMessage *connect_go.Client[v1.SendMessageRequest, v1.SendMessageResponse]
 }
 
 // CreateUser calls chat.v1.ChatService.CreateUser.
 func (c *chatServiceClient) CreateUser(ctx context.Context, req *connect_go.Request[v1.CreateUserRequest]) (*connect_go.Response[v1.CreateUserResponse], error) {
 	return c.createUser.CallUnary(ctx, req)
+}
+
+// GetUser calls chat.v1.ChatService.GetUser.
+func (c *chatServiceClient) GetUser(ctx context.Context, req *connect_go.Request[v1.GetUserRequest]) (*connect_go.Response[v1.GetUserResponse], error) {
+	return c.getUser.CallUnary(ctx, req)
 }
 
 // SendMessage calls chat.v1.ChatService.SendMessage.
@@ -73,6 +85,7 @@ func (c *chatServiceClient) SendMessage(ctx context.Context, req *connect_go.Req
 // ChatServiceHandler is an implementation of the chat.v1.ChatService service.
 type ChatServiceHandler interface {
 	CreateUser(context.Context, *connect_go.Request[v1.CreateUserRequest]) (*connect_go.Response[v1.CreateUserResponse], error)
+	GetUser(context.Context, *connect_go.Request[v1.GetUserRequest]) (*connect_go.Response[v1.GetUserResponse], error)
 	SendMessage(context.Context, *connect_go.Request[v1.SendMessageRequest]) (*connect_go.Response[v1.SendMessageResponse], error)
 }
 
@@ -88,6 +101,11 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect_go.HandlerOpt
 		svc.CreateUser,
 		opts...,
 	))
+	mux.Handle("/chat.v1.ChatService/GetUser", connect_go.NewUnaryHandler(
+		"/chat.v1.ChatService/GetUser",
+		svc.GetUser,
+		opts...,
+	))
 	mux.Handle("/chat.v1.ChatService/SendMessage", connect_go.NewUnaryHandler(
 		"/chat.v1.ChatService/SendMessage",
 		svc.SendMessage,
@@ -101,6 +119,10 @@ type UnimplementedChatServiceHandler struct{}
 
 func (UnimplementedChatServiceHandler) CreateUser(context.Context, *connect_go.Request[v1.CreateUserRequest]) (*connect_go.Response[v1.CreateUserResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("chat.v1.ChatService.CreateUser is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) GetUser(context.Context, *connect_go.Request[v1.GetUserRequest]) (*connect_go.Response[v1.GetUserResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("chat.v1.ChatService.GetUser is not implemented"))
 }
 
 func (UnimplementedChatServiceHandler) SendMessage(context.Context, *connect_go.Request[v1.SendMessageRequest]) (*connect_go.Response[v1.SendMessageResponse], error) {

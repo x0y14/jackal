@@ -10,6 +10,13 @@ message CreateUserResponse {
   types.v1.User user = 1;
 }
 
+message GetUserRequest {
+  string user_id = 1;
+}
+message GetUserResponse {
+  types.v1.User user = 1;
+}
+
 message SendMessageRequest {
   types.v1.Message message = 1;
 }
@@ -19,5 +26,6 @@ message SendMessageResponse {
 
 service ChatService {
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {};
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {};
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {};
 }
