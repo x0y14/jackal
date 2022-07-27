@@ -25,10 +25,16 @@ SQLITE_PATH=/data/sqlite/jackal.sqlite
 ```
 
 ### run
+server
 ```shell
 # .env.localに環境変数が書いてあったとすると
 # If the environment variables are written in .env.local...
 docker compose --env-file .env.local up
+```
+
+client
+```shell
+go run cmd/tui/main.go -userid=<YOUR_USERID> -name=<DISPLAYNAME> -receiver=<RECEIVER_USERID>
 ```
 
 
