@@ -7,7 +7,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog/log"
-	"github.com/x0y14/jackal"
 	"github.com/x0y14/jackal/database"
 	v1 "github.com/x0y14/jackal/gen/chat/v1"
 	"github.com/x0y14/jackal/mem"
@@ -58,15 +57,8 @@ func (c *ChatService) SendMessage(
 		return nil, connect_go.NewError(connect_go.CodeInvalidArgument, fmt.Errorf("receiver, who are you"))
 	}
 
-	// 送信者、受信者のidをくっつけてチャットidを作成
-	chatId, err := jackal.CreateChatId(userId, request.Msg.Message.To)
-	if err != nil {
-		log.Warn().Str("chatId", chatId).Msg("invalid chatId")
-		return nil, connect_go.NewError(connect_go.CodeInvalidArgument, fmt.Errorf("invalid sender or receiver"))
-	}
-
 	// 一部情報を強制的に書き換え
-	//request.Msg.Message.To = chatId
+	request.Msg.Message.From = userId
 	request.Msg.Message.CreatedAt = timestamppb.Now()
 
 	// sqlite
@@ -86,7 +78,36 @@ func (c *ChatService) SendMessage(
 	}
 	defer ch.Close()
 
+	// 送信者に通知
 	q, err := ch.QueueDeclare(
+		request.Msg.Message.From,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to declare rb.queue")
+		return nil, connect_go.NewError(connect_go.CodeInternal, err)
+	}
+	err = ch.PublishWithContext(
+		context.Background(),
+		"",
+		q.Name,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(fmt.Sprintf("%v", messageId)),
+		})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to publish message")
+		return nil, connect_go.NewError(connect_go.CodeInternal, err)
+	}
+
+	// 受信者に通知
+	q, err = ch.QueueDeclare(
 		request.Msg.Message.To,
 		false,
 		false,
@@ -98,8 +119,6 @@ func (c *ChatService) SendMessage(
 		log.Error().Err(err).Msg("failed to declare rb.queue")
 		return nil, connect_go.NewError(connect_go.CodeInternal, err)
 	}
-
-	// 受信したことをmqに教えてあげる
 	err = ch.PublishWithContext(
 		context.Background(),
 		"",
