@@ -32,6 +32,12 @@ type Model struct {
 	receiver    string
 }
 
+var userProfiles map[string]string
+
+func init() {
+	userProfiles = map[string]string{}
+}
+
 func InitialModel(client chatv1connect.ChatServiceClient, sender, receiver string) Model {
 	ta := textarea.New()
 	ta.Placeholder = "write msg here"
@@ -106,20 +112,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ReceiveRespMsg:
 		m.messages = append(m.messages, msg.Resp.Message)
 		var screen string
+		var senderDisplayName string
 		if len(m.messages) < 11 {
 			for _, message := range m.messages {
-				if message.From == m.sender {
-					screen += fmt.Sprintf("%v: %s\n", m.senderStyle.Render(message.From), message.Text)
+				// 表示名取得
+				name, ok := userProfiles[message.From]
+				if ok {
+					senderDisplayName = name
 				} else {
-					screen += fmt.Sprintf("%v: %s\n", message.From, message.Text)
+					user, err := m.chatClient.GetUser(context.Background(), connect.NewRequest(&chatv1.GetUserRequest{UserId: message.From}))
+					if err != nil {
+						log.Fatal(err)
+					}
+					userProfiles[user.Msg.User.UserId] = user.Msg.User.DisplayName
+					senderDisplayName = user.Msg.User.DisplayName
+				}
+				if message.From == m.sender {
+					screen += fmt.Sprintf("%v(%v): %s\n", m.senderStyle.Render(senderDisplayName), message.From, message.Text)
+				} else {
+					screen += fmt.Sprintf("%v(%v): %s\n", senderDisplayName, message.From, message.Text)
 				}
 			}
 		} else {
 			for _, message := range m.messages[len(m.messages)-10 : len(m.messages)-1] {
-				if message.From == m.sender {
-					screen += fmt.Sprintf("%v: %s\n", m.senderStyle.Render(message.From), message.Text)
+				// 表示名取得
+				name, ok := userProfiles[message.From]
+				if ok {
+					senderDisplayName = name
 				} else {
-					screen += fmt.Sprintf("%v: %s\n", message.From, message.Text)
+					user, err := m.chatClient.GetUser(context.Background(), connect.NewRequest(&chatv1.GetUserRequest{UserId: message.From}))
+					if err != nil {
+						log.Fatal(err)
+					}
+					userProfiles[user.Msg.User.UserId] = user.Msg.User.DisplayName
+					senderDisplayName = user.Msg.User.DisplayName
+				}
+				if message.From == m.sender {
+					screen += fmt.Sprintf("%v(%v): %s\n", m.senderStyle.Render(senderDisplayName), message.From, message.Text)
+				} else {
+					screen += fmt.Sprintf("%v(%v): %s\n", senderDisplayName, message.From, message.Text)
 				}
 			}
 		}
