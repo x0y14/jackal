@@ -151,7 +151,10 @@ func (c *ChatService) SendMessage(
 
 	// idを書き換え
 	request.Msg.Message.MessageId = messageId
-	//
+
+	// 中間
+	log.Info().Msg(fmt.Sprintf("%v", request.Msg.Message))
+
 	return connect_go.NewResponse(
 		&v1.SendMessageResponse{
 			Message: request.Msg.Message,
