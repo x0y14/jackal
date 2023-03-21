@@ -11,12 +11,14 @@ import (
 
 var rdb *redis.Client
 
-func Init(addr string) {
+func Init(addr string) error {
 	rdb = redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: "",
 		DB:       0,
 	})
+	_, err := rdb.Ping(context.Background()).Result()
+	return err
 }
 
 func GenerateMessageId() (int64, error) {

@@ -12,21 +12,52 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
 	err := database.Init(os.Getenv("SQLITE_PATH"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to connect to sqlite: %s", err)
 	}
 	defer database.Close()
-	mem.Init(os.Getenv("REDIS_URL"))
 
-	conn, err := amqp.Dial(os.Getenv("RABBIT_URL"))
-	if err != nil {
-		log.Fatalf("failed to connect rabbitmq: %v", err)
+	// REDISとの接続
+	redisTryCount := 0
+	for redisTryCount < 10 {
+		redisTryCount++
+		if err = mem.Init(os.Getenv("REDIS_URL")); err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		} else {
+			redisTryCount = -1
+			break
+		}
+	}
+	if redisTryCount != -1 {
+		log.Fatalf("failed to connect to redis in 10 times: %s", err)
+	}
+
+	// RABBITMQとの接続
+	rabbitTryCount := 0
+	var conn *amqp.Connection
+	for rabbitTryCount < 10 {
+		rabbitTryCount++
+		conn, err = amqp.Dial(os.Getenv("RABBIT_URL"))
+		if err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		} else {
+			rabbitTryCount = -1
+			break
+		}
+	}
+	if rabbitTryCount != -1 {
+		log.Fatalf("failed to connect to rabbitMq in 10 times: %s", err)
 	}
 	defer conn.Close()
+
+	log.Printf("connect to redis & rabbitMq successfuly")
 
 	chatServiceHandler := &service.ChatService{
 		Rb: conn,
