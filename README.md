@@ -24,6 +24,8 @@ REDIS_URL=host.docker.internal:6379
 SQLITE_PATH=/data/sqlite/jackal.sqlite
 ```
 
+dataというディレクトリを作成し、その中に空のredisディレクトリと、白紙のjackal.sqliteファイルを設置したsqliteディレクトリを作成しないと起動できない問題がある.
+
 ### run
 server
 ```shell
