@@ -2,8 +2,8 @@ package mem
 
 import (
 	"context"
-	"github.com/go-redis/redis/v9"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	typesv1 "github.com/x0y14/jackal/gen/types/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strconv"
